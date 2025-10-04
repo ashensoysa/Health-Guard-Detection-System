@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ patient.name }} — Profile</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body.dark-mode {
+      background-color: #121212;
+      color: #f5f5f5;
+    }
+    table.dark-mode {
+      background-color: #1e1e1e;
+      color: #ddd;
+      border-color: #444;
+    }
+    button.dark-mode {
+      background-color: #333;
+      color: #f0f0f0;
+    }
+    .highlighted {
+      animation: fadeFlash 2s ease-in-out;
+      background-color: #d4edda !important;
+    }
+    @keyframes fadeFlash {
+      0%   { background-color: #c3f3d8; }
+      50%  { background-color: #d4edda; }
+      100% { background-color: transparent; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-panel">
+  <h2>👤 Patient Profile </h2>
+  <p><strong>Name:</strong>{{ patient.name }}</p>
+  <p><strong>Age:</strong> {{ patient.age }}</p>
+  <p><strong>Address:</strong> {{ patient.address }}</p>
+
+  <a href="/patient/export/pdf/{{ patient.id }}"><button type="button">📄 Export Profile PDF</button></a>
+
+  <!-- 🔍 Filter Records -->
+  <h3>🔍 Filter Records</h3>
+  <form method="GET" action="/patient/{{ patient.id }}">
+    <input type="date" name="start_date">
+    <input type="date" name="end_date">
+    <input type="text" name="keyword" placeholder="Search notes">
+    <label><input type="checkbox" name="risk_only" value="1"> Show only RISK</label>
+    <button type="submit">Apply Filter</button>
+  </form>
+
+  <!-- 🧾 Medical Records -->
+  <h3>🧾 Medical Records</h3>
+  <table border="1" cellpadding="8">
+    <tr>
+      <th>Date</th><th>Systolic</th><th>Diastolic</th>
+      <th>HR</th><th>SpO₂</th><th>Result</th><th>Notes</th><th>Edit Notes</th>
+    </tr>
+    {% for entry in records %}
+    <tr data-row-id="{{ entry.id }}">
+      <td>{{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ entry.systolic }}</td>
+      <td>{{ entry.diastolic }}</td>
+      <td>{{ entry.heart_rate }}</td>
+      <td>{{ entry.spo2 }}</td>
+      <td>{{ entry.result }}</td>
+      <td>{{ entry.notes or '—' }}</td>
+      <td>
+        <form onsubmit="saveNotes(event, '{{ entry.id }}')">
+          <textarea id="note-{{ entry.id }}" rows="2" cols="30" placeholder="Update notes...">{{ entry.notes }}</textarea>
+          <button type="submit">💾 Save</button>
+          <span id="status-{{ entry.id }}" style="margin-left:10px;"></span>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- 📊 Vitals Chart -->
+  <h3>📊 Vitals Trend Chart</h3>
+  <canvas id="profileChart" width="800" height="300"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    fetch("/patient/chartdata/{{ patient.id }}")
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById("profileChart").getContext("2d");
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: data.labels,
+            datasets: [
+              { label: "Heart Rate (BPM)", data: data.heart, borderColor: "red", fill: false },
+              { label: "SpO₂ (%)", data: data.spo2, borderColor: "blue", fill: false },
+              { label: "Systolic BP", data: data.systolic, borderColor: "green", fill: false },
+              { label: "Diastolic BP", data: data.diastolic, borderColor: "purple", fill: false }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      });
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+      document.querySelectorAll("table").forEach(t => t.classList.toggle("dark-mode"));
+      document.querySelectorAll("button").forEach(b => b.classList.toggle("dark-mode"));
+      localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
+    }
+
+    window.onload = function() {
+      if (localStorage.getItem("darkMode") === "true") {
+        toggleDarkMode();
+      }
+    }
+
+    function saveNotes(event, id) {
+      event.preventDefault();
+      const notes = document.getElementById(`note-${id}`).value;
+      const status = document.getElementById(`status-${id}`);
+
+      fetch(`/patient/update_notes/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `updated_notes=${encodeURIComponent(notes)}`
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          status.innerText = "✅ Saved!";
+          const row = document.querySelector(`[data-row-id="${id}"]`);
+          if (row) {
+            row.classList.add("highlighted");
+            setTimeout(() => row.classList.remove("highlighted"), 2000);
+            setTimeout(() => status.innerText = "", 3000);
+          }
+        } else {
+          status.innerText = "❌ Error saving";
+        }
+      })
+      .catch(() => {
+        status.innerText = "⚠️ Failed to save";
+      });
+    }
+  </script>
+  </div>
+  <br>
+  <a href="/dashboard"><button>⬅️ Back to Dashboard</button></a>
+</body>
+</html>
+

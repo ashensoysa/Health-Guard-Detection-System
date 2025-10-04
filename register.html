@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Doctor Registration</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h2>🧑‍⚕️ Register</h2>
+  <div class="login-panel">
+  <form method="POST">
+    <label>Username:</label>
+    <input type="text" name="username" required><br>
+    <label>Password:</label>
+    <input type="password" name="password" required><br>
+    <button type="submit">Register</button>
+
+     <p style="text-align:center; margin-top:10px;">
+    Already registered? <a href="/login">Login here</a>
+     </p>
+  </form>
+</div>
+</body>
+</html>

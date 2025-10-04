@@ -1,0 +1,71 @@
+body {
+  font-family: 'Poppins', sans-serif;
+  background-image: url('/static/background.png');
+  background-size: cover;
+  background-position: center;
+  padding: 30px;
+  text-align: center;
+  color: #023e8a;
+}
+
+h2, h3 {
+  color:black;
+  margin-bottom: 20px;
+}
+
+form, .login-panel {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  display: inline-block;
+  margin-bottom: 40px;
+}
+
+input, button {
+  padding: 10px;
+  margin: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 250px;
+  max-width: 90%;
+}
+
+button {
+  background-color: #0077b6;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #0096c7;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  background: rgba(255,255,255,0.7);
+  margin: 5px;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+.highlighted {
+    animation: fadeFlash 2s ease-in-out;
+    background-color: #d4edda !important;
+  }
+
+  @keyframes fadeFlash {
+    0%   { background-color: #c3f3d8; }
+    50%  { background-color: #d4edda; }
+    100% { background-color: transparent; }
+  }
+
+
+  

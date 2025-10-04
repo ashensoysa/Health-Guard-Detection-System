@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Doctor Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="login-panel">
+  <form id="predict-form">
+  <h2>👨‍⚕️ Liberty Channel Center </h2>
+    <label>Name:</label><br>
+    <input type="text" name="name" placeholder="Patient Name" required /><br>
+    <label>Age: </label><br>
+    <input type="number" name="age" placeholder="Age" required /><br>
+    <label>Address:</label><br>
+    <input type="text" name="address" placeholder="Address" required /><br>
+    <label>Systolic Bp:</label><br>
+    <input type="number" name="systolic" placeholder="Systolic BP" required /><br>
+    <label>Diastolic Bp:</label><br>
+    <input type="number" name="diastolic" placeholder="Diastolic BP" required /><br>
+    <label>Heart Rate:</label><br>
+    <input type="number" name="heart_rate" placeholder="Heart Rate" required /><br>
+    <label>SpO2:</label><br>
+    <input type="number" name="spo2" placeholder="SpO₂ (%)" required /><br>
+    <label>Note:</label><br>
+    <textarea name="notes" placeholder="Doctor's notes (optional)" rows="4" cols="50"></textarea><br><br>
+    <button type="submit">Predict</button>
+  </form>
+  </div>
+
+  <div id="result-box" style="margin-top: 20px;"></div>
+  <div id="advice-card"></div>
+
+  <!--Export Options-->
+  <div class="login-panel">
+  <form id="Export Options">
+  <h3>📥 Export Options</h3>
+  <a href="/export/csv"><button type="button">📊 Download CSV</button></a>
+  <a href="/export/pdf"><button type="button">🧾 Download PDF</button></a>
+  </form>
+  </div>  
+
+  <!--Search Patient History-->
+   <div class="login-panel">
+   <form method="GET" action="/dashboard">
+  <h3>🔍 Search Patient History</h3>
+    <input type="text" name="search_name" placeholder="Enter patient name">
+    <input type="date" name="start_date">
+    <input type="date" name="end_date">
+    <button type="submit">Search</button>
+  </form>
+   </div>
+
+  <!--Vitals Trend-->
+  <div class="login-panel">
+  <form id="Vital Trend">
+  <h3>📊 Vitals Trend</h3>
+  <canvas id="trendChart" width="800" height="200"></canvas>
+  </form> 
+
+  <br>
+  <br>
+  
+  <!--Recent Patient Records-->
+  <form id="Patient Records">
+  <h3>🧾 Recent Patient Records</h3>
+  <ul>
+    {% for entry in history %}
+      <li>
+        <a href="/patient/{{ entry.id }}">
+          {{ entry.name }} — {{ entry.result }} — {{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }}
+        </a><br>
+        {% if entry.notes %}
+          <em>Notes:</em> {{ entry.notes }}
+        {% else %}
+          <em>No notes available</em>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</form>
+  </div>
+
+  <!--Script Section-->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      let isSubmitting = false;
+      const form = document.getElementById('predict-form');
+      const resultBox = document.getElementById('result-box');
+      const adviceCard = document.getElementById('advice-card');
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        const data = {
+          name: form.name.value,
+          age: parseInt(form.age.value),
+          address: form.address.value,
+          systolic_bp: parseFloat(form.systolic.value),
+          diastolic_bp: parseFloat(form.diastolic.value),
+          heart_rate: parseFloat(form.heart_rate.value),
+          spo2: parseFloat(form.spo2.value),
+          notes: form.notes.value
+        };
+
+        try {
+          const res = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+          });
+
+          const result = await res.json();
+          resultBox.innerHTML =
+            `<p><strong>Result:</strong> ${result.result}</p>` +
+            getAdvice(data, result.result);
+          adviceCard.scrollIntoView({ behavior: "smooth" });
+        } catch (err) {
+          resultBox.innerHTML = `<p style="color:red;">Error: Prediction failed.</p>`;
+          console.error(err);
+        }
+
+        isSubmitting = false;
+      });
+
+      function getAdvice(vitals, status) {
+        let tips = [];
+
+        if (status === "RISK") {
+          if (vitals.systolic_bp > 140 || vitals.diastolic_bp > 90)
+            tips.push("🩺 High BP: reduce salt, walk daily, monitor weekly");
+          if (vitals.heart_rate > 100)
+            tips.push("❤️ High HR: hydrate, rest, avoid caffeine");
+          if (vitals.spo2 < 95)
+            tips.push("🫁 Low SpO₂: breathing exercises, humidifier, consult pulmonologist");
+        }
+
+        return tips.length
+          ? `<div id="advice-card"><h4>🧠 Suggested Care Tips:</h4><ul>` +
+            tips.map(t => `<li>${t}</li>`).join("") + `</ul></div>`
+          : `<p>✅ No major risks detected. Maintain healthy routine!</p>`;
+      }
+
+      fetch('/chartdata')
+        .then(res => res.json())
+        .then(data => {
+          const ctx = document.getElementById('trendChart').getContext('2d');
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: data.labels,
+              datasets: [
+                { label: 'Heart Rate (BPM)', data: data.heart, borderColor: 'red', fill: false },
+                { label: 'SpO₂ (%)', data: data.spo2, borderColor: 'blue', fill: false },
+                { label: 'Systolic BP', data: data.systolic, borderColor: 'green', fill: false },
+                { label: 'Diastolic BP', data: data.diastolic, borderColor: 'purple', fill: false }
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        });
+    });
+  </script>
+</body>
+</html>
+
+
+
+
